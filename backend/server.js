@@ -4,6 +4,9 @@ require("dotenv").config({ path: path.join(__dirname, ".env") });
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
+const { authenticateToken } = require("./middleware/auth");
+const authRoutes = require("./routes/auth");
+const appointmentRoutes = require("./routes/appointments");
 
 const app = express();
 
@@ -113,6 +116,12 @@ async function createPatient(req, res) {
   if (!process.env.DATABASE_URL) {
     return res.status(500).json({ error: "Configuration serveur incomplète (DATABASE_URL)." });
   }
+
+  // Seuls les réceptionnistes ont le droit de créer des dossiers patients
+  if (req.user && req.user.role !== 'RECEPTIONIST') {
+    return res.status(403).json({ error: "Seul le personnel de réception peut créer un dossier patient." });
+  }
+
   const parsed = parsePatientBody(req.body);
   if (parsed.error) {
     return res.status(400).json({ error: parsed.error });
@@ -131,11 +140,18 @@ async function createPatient(req, res) {
   }
 }
 
+// Route Auth
+app.use("/api/auth", authRoutes(pool));
+
+// Route Appointments
+app.use("/api/appointments", appointmentRoutes(pool));
+
 // Les deux chemins : ancien front / proxy, ou préfixe /api.
-app.get("/patients", listPatients);
-app.post("/patients", createPatient);
-app.get("/api/patients", listPatients);
-app.post("/api/patients", createPatient);
+// On sécurise l'accès avec authenticateToken
+app.get("/patients", authenticateToken, listPatients);
+app.post("/patients", authenticateToken, createPatient);
+app.get("/api/patients", authenticateToken, listPatients);
+app.post("/api/patients", authenticateToken, createPatient);
 
 app.use((req, res) => {
   res.status(404).json({

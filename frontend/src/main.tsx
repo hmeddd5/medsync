@@ -2,6 +2,7 @@ import { StrictMode, Component, type ErrorInfo, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { AuthProvider } from './context/AuthContext'
 
 class RootErrorBoundary extends Component<{ children: ReactNode }, { message: string | null }> {
   state: { message: string | null } = { message: null }
@@ -48,7 +49,9 @@ if (!rootEl) {
 createRoot(rootEl).render(
   <StrictMode>
     <RootErrorBoundary>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </RootErrorBoundary>
   </StrictMode>,
 )

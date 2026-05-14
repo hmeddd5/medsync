@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
+import Login from "./pages/Login";
+import Appointments from "./pages/Appointments";
+import { useAuth } from "./context/AuthContext";
+import "./App.css"; // We'll need to create this for the sidebar
 
 export type Patient = {
   id: number;
@@ -7,7 +11,6 @@ export type Patient = {
   lastName: string;
 };
 
-/** En dev sans VITE_API_URL : appels relatifs → proxy Vite → backend. */
 function apiBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_API_URL;
   if (typeof fromEnv === "string" && fromEnv.trim() !== "") {
@@ -17,7 +20,6 @@ function apiBaseUrl(): string {
   return "http://127.0.0.1:5001";
 }
 
-/** Liste + création patients (chemin court ; le backend accepte aussi /api/patients). */
 function patientsUrl(apiBase: string): string {
   const path = "/patients";
   if (!apiBase) return path;
@@ -34,7 +36,8 @@ async function parseJsonResponse(res: Response): Promise<unknown> {
   }
 }
 
-function App() {
+function PatientsView() {
+  const { token, user, logout } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -46,230 +49,159 @@ function App() {
   const apiBase = apiBaseUrl();
 
   const loadPatients = useCallback(async () => {
+    if (!token) return;
     setError(null);
     setLoading(true);
     const url = patientsUrl(apiBase);
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
       const payload = await parseJsonResponse(res);
 
-      if (!res.ok) {
-        const msg =
-          typeof payload === "object" && payload !== null && "error" in payload
-            ? String((payload as { error?: string }).error)
-            : typeof payload === "string"
-              ? payload
-              : res.statusText;
-        throw new Error(`Erreur ${res.status} : ${msg}`);
-      }
+      if (res.status === 401 || res.status === 403) { logout(); return; }
+      if (!res.ok) throw new Error(`Erreur ${res.status}`);
 
-      if (!Array.isArray(payload)) {
-        throw new Error("Réponse inattendue du serveur (pas une liste).");
-      }
       setPatients(payload as Patient[]);
     } catch (err: unknown) {
-      console.error(err);
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Impossible de contacter le serveur (réseau ou CORS).";
+      setError("Impossible de joindre l’API.");
       setPatients([]);
-      setError(
-        message.includes("Failed to fetch") || message.includes("NetworkError")
-          ? "Impossible de joindre l’API. Lance npm run dev à la racine du projet (ou npm start dans backend + npm run dev dans frontend)."
-          : message
-      );
     } finally {
       setLoading(false);
     }
-  }, [apiBase]);
+  }, [apiBase, token, logout]);
 
-  useEffect(() => {
-    void loadPatients();
-  }, [loadPatients]);
+  useEffect(() => { loadPatients(); }, [loadPatients]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setFormError(null);
     setSubmitting(true);
-    const url = patientsUrl(apiBase);
     try {
-      const res = await fetch(url, {
+      const res = await fetch(patientsUrl(apiBase), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-        }),
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ firstName: firstName.trim(), lastName: lastName.trim() }),
       });
-      const payload = await parseJsonResponse(res);
-
-      if (!res.ok) {
-        const msg =
-          typeof payload === "object" && payload !== null && "error" in payload
-            ? String((payload as { error?: string }).error)
-            : typeof payload === "string"
-              ? payload
-              : res.statusText;
-        setFormError(msg);
-        return;
-      }
-
-      setFirstName("");
-      setLastName("");
+      if (res.status === 401 || res.status === 403) { logout(); return; }
+      if (!res.ok) throw new Error("Erreur serveur");
+      setFirstName(""); setLastName("");
       await loadPatients();
     } catch (err: unknown) {
-      console.error(err);
-      setFormError(
-        err instanceof Error && (err.message.includes("Failed to fetch") || err.message.includes("NetworkError"))
-          ? "Impossible de joindre l’API."
-          : err instanceof Error
-            ? err.message
-            : "Erreur réseau."
-      );
+      setFormError("Erreur lors de l'enregistrement.");
     } finally {
       setSubmitting(false);
     }
   }
 
   const inputStyle: CSSProperties = {
-    padding: "0.5rem 0.75rem",
-    borderRadius: 6,
-    border: "1px solid var(--border)",
-    background: "var(--bg)",
-    color: "var(--text-h)",
-    font: "inherit",
-    width: "min(100%, 220px)",
-    boxSizing: "border-box",
+    padding: "0.5rem 0.75rem", borderRadius: 6, border: "1px solid var(--border)",
+    background: "var(--bg)", color: "var(--text-h)", width: "100%", boxSizing: "border-box",
   };
 
   return (
-    <div
-      style={{
-        flex: 1,
-        width: "100%",
-        boxSizing: "border-box",
-        textAlign: "center",
-        marginTop: "50px",
-        color: "var(--text-h)",
-        padding: "0 1rem 2rem",
-      }}
-    >
-      <h1>Patients</h1>
-
-      <div style={{ marginBottom: "1rem", minHeight: "1.5rem" }}>
-        {loading && <p style={{ margin: 0 }}>Chargement des patients…</p>}
-        {error && (
-          <div style={{ marginTop: loading ? 8 : 0 }}>
-            <p style={{ color: "crimson", margin: "0 0 8px" }}>{error}</p>
-            <button
-              type="button"
-              onClick={() => void loadPatients()}
-              style={{
-                padding: "0.4rem 0.9rem",
-                font: "inherit",
-                borderRadius: 6,
-                border: "1px solid var(--border)",
-                background: "var(--code-bg)",
-                color: "var(--text-h)",
-                cursor: "pointer",
-              }}
-            >
-              Réessayer
-            </button>
-          </div>
-        )}
+    <div className="view-container">
+      <div className="view-header">
+        <h1>Dossiers Patients</h1>
       </div>
 
-      <section
-        style={{
-          maxWidth: 420,
-          margin: "0 auto 2rem",
-          padding: "1.25rem",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          textAlign: "left",
-        }}
-      >
-        <h2 style={{ fontSize: "1.1rem", marginTop: 0 }}>Nouveau patient</h2>
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: "0.75rem" }}>
-            <label htmlFor="firstName" style={{ display: "block", marginBottom: 4, color: "var(--text)" }}>
-              Prénom
-            </label>
-            <input
-              id="firstName"
-              name="firstName"
-              autoComplete="given-name"
-              value={firstName}
-              onChange={(ev) => setFirstName(ev.target.value)}
-              style={inputStyle}
-              maxLength={100}
-              disabled={submitting}
-            />
-          </div>
-          <div style={{ marginBottom: "0.75rem" }}>
-            <label htmlFor="lastName" style={{ display: "block", marginBottom: 4, color: "var(--text)" }}>
-              Nom
-            </label>
-            <input
-              id="lastName"
-              name="lastName"
-              autoComplete="family-name"
-              value={lastName}
-              onChange={(ev) => setLastName(ev.target.value)}
-              style={inputStyle}
-              maxLength={100}
-              disabled={submitting}
-            />
-          </div>
-          {formError && (
-            <p style={{ color: "crimson", margin: "0 0 0.75rem", fontSize: "0.95rem" }} role="alert">
-              {formError}
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{
-              padding: "0.5rem 1rem",
-              font: "inherit",
-              borderRadius: 6,
-              border: "1px solid var(--accent-border)",
-              background: "var(--accent-bg)",
-              color: "var(--text-h)",
-              cursor: submitting ? "wait" : "pointer",
-            }}
-          >
-            {submitting ? "Enregistrement…" : "Ajouter"}
-          </button>
-        </form>
-      </section>
+      <div style={{ marginBottom: "1rem" }}>
+        {loading && <p>Chargement des patients…</p>}
+        {error && <p style={{ color: "crimson" }}>{error}</p>}
+      </div>
+
+      {user?.role === 'RECEPTIONIST' && (
+        <section style={{ maxWidth: 420, margin: "0 0 2rem", padding: "1.25rem", border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg)" }}>
+          <h2 style={{ fontSize: "1.1rem", marginTop: 0 }}>Nouveau patient</h2>
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: "0.75rem" }}>
+              <label style={{ display: "block", marginBottom: 4, color: "var(--text)" }}>Prénom</label>
+              <input value={firstName} onChange={(ev) => setFirstName(ev.target.value)} style={inputStyle} required disabled={submitting} />
+            </div>
+            <div style={{ marginBottom: "0.75rem" }}>
+              <label style={{ display: "block", marginBottom: 4, color: "var(--text)" }}>Nom</label>
+              <input value={lastName} onChange={(ev) => setLastName(ev.target.value)} style={inputStyle} required disabled={submitting} />
+            </div>
+            {formError && <p style={{ color: "crimson" }}>{formError}</p>}
+            <button type="submit" disabled={submitting} style={{ padding: "0.5rem 1rem", borderRadius: 6, border: "none", background: "#0ea5e9", color: "white", fontWeight: 600, cursor: "pointer", width: "100%" }}>
+              {submitting ? "Enregistrement…" : "Ajouter au dossier"}
+            </button>
+          </form>
+        </section>
+      )}
 
       {!loading && !error && patients.length === 0 && <p>Aucun patient enregistré.</p>}
 
       {!loading && patients.length > 0 && (
-        <div style={{ marginTop: "1rem" }}>
-          {patients.map((patient, index) => (
-            <div
-              key={patient.id ?? `patient-${index}`}
-              style={{
-                border: "1px solid var(--border)",
-                margin: "10px auto",
-                padding: "10px",
-                maxWidth: 400,
-                borderRadius: 6,
-              }}
-            >
-              <p style={{ margin: 0 }}>
-                <strong>Prénom :</strong> {String(patient?.firstName ?? "")}
-                <br />
-                <strong>Nom :</strong> {String(patient?.lastName ?? "")}
-              </p>
+        <div className="patients-grid">
+          {patients.map((patient) => (
+            <div key={patient.id} className="patient-card">
+              <div>
+                <h3 style={{ margin: "0 0 5px 0", fontSize: "16px" }}>{patient.lastName.toUpperCase()} {patient.firstName}</h3>
+                <p style={{ margin: 0, fontSize: "12px", color: "var(--text)" }}>ID Patient : #{patient.id}</p>
+              </div>
+              <button className="btn-outline">Dossier complet</button>
             </div>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function App() {
+  const { isAuthenticated, isLoading, logout, user } = useAuth();
+  const [currentRoute, setCurrentRoute] = useState("appointments");
+
+  if (isLoading) {
+    return <div style={{ marginTop: 50, textAlign: "center" }}>Chargement...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Login />;
+  }
+
+  return (
+    <div className="app-layout">
+      {/* Sidebar Navigation */}
+      <aside className="sidebar">
+        <div className="sidebar-brand">
+          <h2>EpicClinical</h2>
+        </div>
+        
+        <div className="sidebar-user">
+          <div className="user-avatar">{user?.firstName.charAt(0)}{user?.lastName.charAt(0)}</div>
+          <div className="user-info">
+            <span className="user-name">{user?.firstName} {user?.lastName}</span>
+            <span className="user-role">{user?.role}</span>
+          </div>
+        </div>
+
+        <nav className="sidebar-nav">
+          <button 
+            className={`nav-item ${currentRoute === 'appointments' ? 'active' : ''}`}
+            onClick={() => setCurrentRoute('appointments')}
+          >
+            <span className="icon">📅</span> Planning & Agenda
+          </button>
+          <button 
+            className={`nav-item ${currentRoute === 'patients' ? 'active' : ''}`}
+            onClick={() => setCurrentRoute('patients')}
+          >
+            <span className="icon">📁</span> Dossiers Patients
+          </button>
+        </nav>
+
+        <div className="sidebar-footer">
+          <button className="nav-item btn-logout" onClick={logout}>
+            <span className="icon">🚪</span> Déconnexion
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="main-content">
+        {currentRoute === 'appointments' && <Appointments />}
+        {currentRoute === 'patients' && <PatientsView />}
+      </main>
     </div>
   );
 }
