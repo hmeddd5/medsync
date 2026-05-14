@@ -1,15 +1,19 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+const apiProxy = {
+  "/patients": { target: "http://127.0.0.1:5001", changeOrigin: true },
+  "/api": { target: "http://127.0.0.1:5001", changeOrigin: true },
+  "/health": { target: "http://127.0.0.1:5001", changeOrigin: true },
+} as const
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   server: {
-    // En dev, le front appelle /patients (même origine) → Vite transmet au backend (5000).
-    proxy: {
-      '/health': { target: 'http://127.0.0.1:5000', changeOrigin: true },
-      '/api/health': { target: 'http://127.0.0.1:5000', changeOrigin: true },
-      '/patients': { target: 'http://127.0.0.1:5000', changeOrigin: true },
-    },
+    proxy: { ...apiProxy },
+  },
+  preview: {
+    proxy: { ...apiProxy },
   },
 })

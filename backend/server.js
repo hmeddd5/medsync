@@ -30,9 +30,8 @@ app.use(
 
 app.use(express.json());
 
-// Journal minimal : si tu ne vois rien ici en appelant /health, ce n’est pas ce serveur qui répond.
 app.use((req, _res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   next();
 });
 
@@ -44,9 +43,10 @@ app.get("/", (_req, res) => {
   <p>Si tu vois cette page, tu es bien sur le <strong>backend</strong> (Node / Express).</p>
   <p><small>Démarrage : <code>${BOOT}</code><br>Fichier : <code>${SERVER_FILE}</code></small></p>
   <ul>
-    <li><a href="/health">GET /health</a> (santé + base)</li>
-    <li><a href="/api/health">GET /api/health</a> (identique)</li>
+    <li><a href="/health">GET /health</a></li>
+    <li><a href="/api/health">GET /api/health</a></li>
     <li><a href="/patients">GET /patients</a></li>
+    <li><a href="/api/patients">GET /api/patients</a> (identique)</li>
   </ul>
 </body></html>`);
 });
@@ -72,12 +72,11 @@ async function healthHandler(_req, res) {
 app.get("/health", healthHandler);
 app.get("/api/health", healthHandler);
 
-app.get("/patients", async (req, res) => {
+async function listPatients(_req, res) {
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL manquant : copie backend/.env.example vers backend/.env");
     return res.status(500).json({ error: "Configuration serveur incomplète (DATABASE_URL)." });
   }
-
   try {
     const { rows } = await pool.query(
       `SELECT id, first_name AS "firstName", last_name AS "lastName"
@@ -89,16 +88,63 @@ app.get("/patients", async (req, res) => {
     console.error(err);
     res.status(500).json({ error: "Erreur base de données", detail: err.message });
   }
-});
+}
 
-// Remplace le message Express « Cannot GET … » par une réponse claire (si c’est bien ce serveur).
+const MAX_NAME_LEN = 100;
+
+function parsePatientBody(body) {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return { error: "Envoie un objet JSON { firstName, lastName }." };
+  }
+  const firstName = typeof body.firstName === "string" ? body.firstName.trim() : "";
+  const lastName = typeof body.lastName === "string" ? body.lastName.trim() : "";
+  if (!firstName) return { error: "Le prénom (firstName) est requis." };
+  if (!lastName) return { error: "Le nom (lastName) est requis." };
+  if (firstName.length > MAX_NAME_LEN) {
+    return { error: `Le prénom ne doit pas dépasser ${MAX_NAME_LEN} caractères.` };
+  }
+  if (lastName.length > MAX_NAME_LEN) {
+    return { error: `Le nom ne doit pas dépasser ${MAX_NAME_LEN} caractères.` };
+  }
+  return { firstName, lastName };
+}
+
+async function createPatient(req, res) {
+  if (!process.env.DATABASE_URL) {
+    return res.status(500).json({ error: "Configuration serveur incomplète (DATABASE_URL)." });
+  }
+  const parsed = parsePatientBody(req.body);
+  if (parsed.error) {
+    return res.status(400).json({ error: parsed.error });
+  }
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO patients (first_name, last_name)
+       VALUES ($1, $2)
+       RETURNING id, first_name AS "firstName", last_name AS "lastName"`,
+      [parsed.firstName, parsed.lastName]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur base de données", detail: err.message });
+  }
+}
+
+// Les deux chemins : ancien front / proxy, ou préfixe /api.
+app.get("/patients", listPatients);
+app.post("/patients", createPatient);
+app.get("/api/patients", listPatients);
+app.post("/api/patients", createPatient);
+
 app.use((req, res) => {
   res.status(404).json({
     error: "Route inconnue sur l’API clinical-platform",
     method: req.method,
     path: req.path,
+    originalUrl: req.originalUrl,
     boot: BOOT,
-    try: ["/", "/health", "/api/health", "/patients"],
+    try: ["GET /patients", "POST /patients", "GET /api/patients", "POST /api/patients"],
   });
 });
 
@@ -108,7 +154,7 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log("======== clinical-platform API ========");
   console.log(`Fichier : ${SERVER_FILE}`);
   console.log(`Démarrage : ${BOOT}`);
-  console.log(`Écoute  : http://127.0.0.1:${PORT}  (et toutes les interfaces)`);
-  console.log(`Ouvre   : http://127.0.0.1:${PORT}/  puis clique sur /health`);
+  console.log(`Écoute  : http://127.0.0.1:${PORT}`);
+  console.log("Routes patients : GET|POST /patients et GET|POST /api/patients");
   console.log("========================================");
 });
