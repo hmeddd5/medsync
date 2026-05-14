@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: clinical-platform-db
+    environment:
+      POSTGRES_USER: clinical
+      POSTGRES_PASSWORD: clinical
+      POSTGRES_DB: clinical
+    ports:
+      - "5432:5432"
+    volumes:
+      - clinical_pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+
+volumes:
+  clinical_pgdata:
