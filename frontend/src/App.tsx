@@ -3,6 +3,8 @@ import type { CSSProperties, FormEvent } from "react";
 import Login from "./pages/Login";
 import Appointments from "./pages/Appointments";
 import { useAuth } from "./context/AuthContext";
+// Étape 4 : Importation de la nouvelle page de détail du patient
+import PatientDetail from "./pages/PatientDetail";
 import "./App.css"; // We'll need to create this for the sidebar
 
 export type Patient = {
@@ -36,7 +38,9 @@ async function parseJsonResponse(res: Response): Promise<unknown> {
   }
 }
 
-function PatientsView() {
+// Étape 4 : Modification du composant PatientsView pour accepter la fonction onOpenDetail
+// comme propriété (prop), afin de notifier le composant parent (App) lors du clic sur un dossier.
+function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => void }) {
   const { token, user, logout } = useAuth();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -138,7 +142,10 @@ function PatientsView() {
                 <h3 style={{ margin: "0 0 5px 0", fontSize: "16px" }}>{patient.lastName.toUpperCase()} {patient.firstName}</h3>
                 <p style={{ margin: 0, fontSize: "12px", color: "var(--text)" }}>ID Patient : #{patient.id}</p>
               </div>
-              <button className="btn-outline">Dossier complet</button>
+              {/* Étape 4 : On appelle onOpenDetail avec l'ID du patient concerné lors du clic */}
+              <button className="btn-outline" onClick={() => onOpenDetail(patient.id)}>
+                Dossier complet
+              </button>
             </div>
           ))}
         </div>
@@ -149,7 +156,12 @@ function PatientsView() {
 
 function App() {
   const { isAuthenticated, isLoading, logout, user } = useAuth();
+  
+  // Étape 4 : Déclaration de nos états de routage. 
+  // currentRoute contient le nom de la vue active ('appointments', 'patients', 'patient-detail')
+  // selectedPatientId contient l'identifiant du patient dont on consulte le dossier médical
   const [currentRoute, setCurrentRoute] = useState("appointments");
+  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
 
   if (isLoading) {
     return <div style={{ marginTop: 50, textAlign: "center" }}>Chargement...</div>;
@@ -200,7 +212,27 @@ function App() {
       {/* Main Content Area */}
       <main className="main-content">
         {currentRoute === 'appointments' && <Appointments />}
-        {currentRoute === 'patients' && <PatientsView />}
+        
+        {/* Étape 4 : Si la route est 'patients', on passe le callback qui change la route vers le détail */}
+        {currentRoute === 'patients' && (
+          <PatientsView 
+            onOpenDetail={(patientId) => {
+              setSelectedPatientId(patientId);
+              setCurrentRoute("patient-detail");
+            }} 
+          />
+        )}
+        
+        {/* Étape 4 : Si la route est 'patient-detail', on rend le composant PatientDetail */}
+        {currentRoute === 'patient-detail' && selectedPatientId && (
+          <PatientDetail 
+            patientId={selectedPatientId} 
+            onBack={() => {
+              setSelectedPatientId(null);
+              setCurrentRoute("patients");
+            }} 
+          />
+        )}
       </main>
     </div>
   );

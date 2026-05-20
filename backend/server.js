@@ -7,6 +7,8 @@ const { Pool } = require("pg");
 const { authenticateToken } = require("./middleware/auth");
 const authRoutes = require("./routes/auth");
 const appointmentRoutes = require("./routes/appointments");
+// Étape 4 : Importation des routes du dossier médical (notes et prescriptions)
+const recordRoutes = require("./routes/records");
 
 const app = express();
 
@@ -93,6 +95,34 @@ async function listPatients(_req, res) {
   }
 }
 
+// Étape 4 : Récupérer les informations d'un seul patient par son ID
+// Cette route est accessible par tout le personnel connecté (Docteurs, Infirmiers, Réceptionnistes)
+// car tout le monde a besoin d'identifier le patient.
+async function getPatientById(req, res) {
+  if (!process.env.DATABASE_URL) {
+    return res.status(500).json({ error: "Configuration serveur incomplète (DATABASE_URL)." });
+  }
+  const { id } = req.params; // On extrait l'id passé dans l'URL (ex: /api/patients/3)
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, first_name AS "firstName", last_name AS "lastName", created_at AS "createdAt"
+       FROM patients
+       WHERE id = $1`,
+      [id] // Requête paramétrée sécurisée
+    );
+
+    // Si aucun patient ne possède cet ID
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Patient introuvable dans la base de données." });
+    }
+
+    res.json(rows[0]); // Renvoie le patient trouvé sous forme d'objet JSON
+  } catch (err) {
+    console.error("Erreur lors de la récupération du patient par ID:", err);
+    res.status(500).json({ error: "Erreur base de données", detail: err.message });
+  }
+}
+
 const MAX_NAME_LEN = 100;
 
 function parsePatientBody(body) {
@@ -146,12 +176,19 @@ app.use("/api/auth", authRoutes(pool));
 // Route Appointments
 app.use("/api/appointments", appointmentRoutes(pool));
 
+// Étape 4 : Brancher le routeur des dossiers médicaux sous le préfixe /api/records
+app.use("/api/records", recordRoutes(pool));
+
 // Les deux chemins : ancien front / proxy, ou préfixe /api.
 // On sécurise l'accès avec authenticateToken
 app.get("/patients", authenticateToken, listPatients);
 app.post("/patients", authenticateToken, createPatient);
 app.get("/api/patients", authenticateToken, listPatients);
 app.post("/api/patients", authenticateToken, createPatient);
+
+// Étape 4 : Déclaration des routes pour obtenir un patient par son ID
+app.get("/patients/:id", authenticateToken, getPatientById);
+app.get("/api/patients/:id", authenticateToken, getPatientById);
 
 app.use((req, res) => {
   res.status(404).json({
