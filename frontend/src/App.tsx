@@ -11,6 +11,10 @@ export type Patient = {
   id: number;
   firstName: string;
   lastName: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  status?: string;
 };
 
 function apiBaseUrl(): string {
@@ -47,6 +51,10 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
   const [loading, setLoading] = useState(true);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
+  const [showArchived, setShowArchived] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -56,7 +64,7 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
     if (!token) return;
     setError(null);
     setLoading(true);
-    const url = patientsUrl(apiBase);
+    const url = `${patientsUrl(apiBase)}?status=${showArchived ? 'ARCHIVED' : 'ACTIVE'}`;
     try {
       const res = await fetch(url, { headers: { "Authorization": `Bearer ${token}` } });
       const payload = await parseJsonResponse(res);
@@ -71,7 +79,7 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
     } finally {
       setLoading(false);
     }
-  }, [apiBase, token, logout]);
+  }, [apiBase, token, logout, showArchived]);
 
   useEffect(() => { loadPatients(); }, [loadPatients]);
 
@@ -83,16 +91,50 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
       const res = await fetch(patientsUrl(apiBase), {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ firstName: firstName.trim(), lastName: lastName.trim() }),
+        body: JSON.stringify({ 
+          firstName: firstName.trim(), 
+          lastName: lastName.trim(),
+          phone: phone.trim(),
+          email: email.trim(),
+          address: address.trim()
+        }),
       });
       if (res.status === 401 || res.status === 403) { logout(); return; }
       if (!res.ok) throw new Error("Erreur serveur");
-      setFirstName(""); setLastName("");
+      setFirstName(""); setLastName(""); setPhone(""); setEmail(""); setAddress("");
       await loadPatients();
     } catch (err: unknown) {
       setFormError("Erreur lors de l'enregistrement.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function togglePatientStatus(id: number, currentStatus: string) {
+    if (!token) return;
+    const nextStatus = currentStatus === "ACTIVE" ? "ARCHIVED" : "ACTIVE";
+    const confirmMessage = nextStatus === "ARCHIVED"
+      ? "Êtes-vous sûr de vouloir archiver ce dossier patient (sortie du système) ?"
+      : "Voulez-vous réactiver ce dossier patient ?";
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      const res = await fetch(`${patientsUrl(apiBase)}/${id}/status`, {
+        method: "PATCH",
+        headers: { 
+          "Content-Type": "application/json", 
+          "Authorization": `Bearer ${token}` 
+        },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (res.status === 401 || res.status === 403) { logout(); return; }
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Erreur de changement de statut");
+      }
+      await loadPatients();
+    } catch (err: any) {
+      alert(err.message);
     }
   }
 
@@ -103,8 +145,19 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
 
   return (
     <div className="view-container">
-      <div className="view-header">
-        <h1>Dossiers Patients</h1>
+      <div className="view-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "15px", marginBottom: "30px" }}>
+        <h1 style={{ margin: 0 }}>Dossiers Patients</h1>
+        {(user?.role === 'RECEPTIONIST' || user?.role === 'DOCTOR') && (
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", cursor: "pointer", color: "var(--text)", background: "var(--bg)", padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border)" }}>
+            <input 
+              type="checkbox" 
+              checked={showArchived} 
+              onChange={(e) => setShowArchived(e.target.checked)} 
+              style={{ width: "auto", margin: 0, padding: 0, pointerEvents: "auto" }} 
+            />
+            Afficher les dossiers archivés
+          </label>
+        )}
       </div>
 
       <div style={{ marginBottom: "1rem" }}>
@@ -112,7 +165,7 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
         {error && <p style={{ color: "crimson" }}>{error}</p>}
       </div>
 
-      {user?.role === 'RECEPTIONIST' && (
+      {!showArchived && user?.role === 'RECEPTIONIST' && (
         <section style={{ maxWidth: 420, margin: "0 0 2rem", padding: "1.25rem", border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg)" }}>
           <h2 style={{ fontSize: "1.1rem", marginTop: 0 }}>Nouveau patient</h2>
           <form onSubmit={handleSubmit}>
@@ -124,6 +177,18 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
               <label style={{ display: "block", marginBottom: 4, color: "var(--text)" }}>Nom</label>
               <input value={lastName} onChange={(ev) => setLastName(ev.target.value)} style={inputStyle} required disabled={submitting} />
             </div>
+            <div style={{ marginBottom: "0.75rem" }}>
+              <label style={{ display: "block", marginBottom: 4, color: "var(--text)" }}>Téléphone</label>
+              <input value={phone} onChange={(ev) => setPhone(ev.target.value)} placeholder="ex: +221 77 123 45 67" style={inputStyle} disabled={submitting} />
+            </div>
+            <div style={{ marginBottom: "0.75rem" }}>
+              <label style={{ display: "block", marginBottom: 4, color: "var(--text)" }}>Adresse Email</label>
+              <input type="email" value={email} onChange={(ev) => setEmail(ev.target.value)} placeholder="ex: patient@email.com" style={inputStyle} disabled={submitting} />
+            </div>
+            <div style={{ marginBottom: "0.75rem" }}>
+              <label style={{ display: "block", marginBottom: 4, color: "var(--text)" }}>Adresse Domicile</label>
+              <input value={address} onChange={(ev) => setAddress(ev.target.value)} placeholder="ex: Dakar, Medina" style={inputStyle} disabled={submitting} />
+            </div>
             {formError && <p style={{ color: "crimson" }}>{formError}</p>}
             <button type="submit" disabled={submitting} style={{ padding: "0.5rem 1rem", borderRadius: 6, border: "none", background: "#0ea5e9", color: "white", fontWeight: 600, cursor: "pointer", width: "100%" }}>
               {submitting ? "Enregistrement…" : "Ajouter au dossier"}
@@ -132,20 +197,56 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
         </section>
       )}
 
-      {!loading && !error && patients.length === 0 && <p>Aucun patient enregistré.</p>}
+      {!loading && !error && patients.length === 0 && (
+        <p>{showArchived ? "Aucun dossier archivé." : "Aucun patient actif enregistré."}</p>
+      )}
 
       {!loading && patients.length > 0 && (
         <div className="patients-grid">
           {patients.map((patient) => (
-            <div key={patient.id} className="patient-card">
-              <div>
-                <h3 style={{ margin: "0 0 5px 0", fontSize: "16px" }}>{patient.lastName.toUpperCase()} {patient.firstName}</h3>
-                <p style={{ margin: 0, fontSize: "12px", color: "var(--text)" }}>ID Patient : #{patient.id}</p>
+            <div 
+              key={patient.id} 
+              className="patient-card" 
+              style={patient.status === 'ARCHIVED' ? { opacity: 0.8, borderStyle: 'dashed', borderColor: '#94a3b8' } : {}}
+            >
+              <div style={{ textAlign: "left" }}>
+                <h3 style={{ margin: "0 0 5px 0", fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
+                  {patient.lastName.toUpperCase()} {patient.firstName}
+                  {patient.status === 'ARCHIVED' && (
+                    <span style={{ fontSize: "10px", background: "#6b7280", color: "white", padding: "2px 6px", borderRadius: "4px", fontWeight: "normal" }}>Archivé</span>
+                  )}
+                </h3>
+                <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "var(--text)" }}>ID Patient : #{patient.id}</p>
+                {patient.phone && <p style={{ margin: 0, fontSize: "11px", color: "var(--text)", display: "flex", alignItems: "center", gap: "4px" }}><span>📞</span> {patient.phone}</p>}
+                {patient.email && <p style={{ margin: 0, fontSize: "11px", color: "var(--text)", display: "flex", alignItems: "center", gap: "4px" }}><span>✉️</span> {patient.email}</p>}
               </div>
-              {/* Étape 4 : On appelle onOpenDetail avec l'ID du patient concerné lors du clic */}
-              <button className="btn-outline" onClick={() => onOpenDetail(patient.id)}>
-                Dossier complet
-              </button>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "flex-end" }}>
+                {patient.status !== 'ARCHIVED' ? (
+                  <>
+                    <button className="btn-outline" onClick={() => onOpenDetail(patient.id)}>
+                      Dossier complet
+                    </button>
+                    {(user?.role === 'RECEPTIONIST' || user?.role === 'DOCTOR') && (
+                      <button 
+                        onClick={() => togglePatientStatus(patient.id, 'ACTIVE')} 
+                        style={{ background: "transparent", border: "1px solid #f97316", color: "#f97316", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer", fontWeight: "600" }}
+                      >
+                        Archiver
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  (user?.role === 'RECEPTIONIST' || user?.role === 'DOCTOR') && (
+                    <button 
+                      onClick={() => togglePatientStatus(patient.id, 'ARCHIVED')} 
+                      style={{ background: "transparent", border: "1px solid #10b981", color: "#10b981", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer", fontWeight: "600" }}
+                    >
+                      Réactiver
+                    </button>
+                  )
+                )}
+              </div>
             </div>
           ))}
         </div>

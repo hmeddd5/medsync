@@ -77,16 +77,22 @@ async function healthHandler(_req, res) {
 app.get("/health", healthHandler);
 app.get("/api/health", healthHandler);
 
-async function listPatients(_req, res) {
+async function listPatients(req, res) {
   if (!process.env.DATABASE_URL) {
     console.error("DATABASE_URL manquant : copie backend/.env.example vers backend/.env");
     return res.status(500).json({ error: "Configuration serveur incomplète (DATABASE_URL)." });
   }
+  
+  // Par défaut, on ne retourne que les patients actifs ('ACTIVE')
+  const status = req.query.status === "ARCHIVED" ? "ARCHIVED" : "ACTIVE";
+
   try {
     const { rows } = await pool.query(
-      `SELECT id, first_name AS "firstName", last_name AS "lastName"
+      `SELECT id, first_name AS "firstName", last_name AS "lastName", phone, email, address, status
        FROM patients
-       ORDER BY id`
+       WHERE status = $1
+       ORDER BY id`,
+      [status]
     );
     res.json(rows);
   } catch (err) {
@@ -105,7 +111,7 @@ async function getPatientById(req, res) {
   const { id } = req.params; // On extrait l'id passé dans l'URL (ex: /api/patients/3)
   try {
     const { rows } = await pool.query(
-      `SELECT id, first_name AS "firstName", last_name AS "lastName", created_at AS "createdAt"
+      `SELECT id, first_name AS "firstName", last_name AS "lastName", phone, email, address, created_at AS "createdAt"
        FROM patients
        WHERE id = $1`,
       [id] // Requête paramétrée sécurisée
@@ -127,10 +133,14 @@ const MAX_NAME_LEN = 100;
 
 function parsePatientBody(body) {
   if (!body || typeof body !== "object" || Array.isArray(body)) {
-    return { error: "Envoie un objet JSON { firstName, lastName }." };
+    return { error: "Envoie un objet JSON { firstName, lastName, phone, email, address }." };
   }
   const firstName = typeof body.firstName === "string" ? body.firstName.trim() : "";
   const lastName = typeof body.lastName === "string" ? body.lastName.trim() : "";
+  const phone = typeof body.phone === "string" ? body.phone.trim() : "";
+  const email = typeof body.email === "string" ? body.email.trim() : "";
+  const address = typeof body.address === "string" ? body.address.trim() : "";
+
   if (!firstName) return { error: "Le prénom (firstName) est requis." };
   if (!lastName) return { error: "Le nom (lastName) est requis." };
   if (firstName.length > MAX_NAME_LEN) {
@@ -139,7 +149,7 @@ function parsePatientBody(body) {
   if (lastName.length > MAX_NAME_LEN) {
     return { error: `Le nom ne doit pas dépasser ${MAX_NAME_LEN} caractères.` };
   }
-  return { firstName, lastName };
+  return { firstName, lastName, phone, email, address };
 }
 
 async function createPatient(req, res) {
@@ -158,14 +168,53 @@ async function createPatient(req, res) {
   }
   try {
     const { rows } = await pool.query(
-      `INSERT INTO patients (first_name, last_name)
-       VALUES ($1, $2)
-       RETURNING id, first_name AS "firstName", last_name AS "lastName"`,
-      [parsed.firstName, parsed.lastName]
+      `INSERT INTO patients (first_name, last_name, phone, email, address)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, first_name AS "firstName", last_name AS "lastName", phone, email, address`,
+      [parsed.firstName, parsed.lastName, parsed.phone, parsed.email, parsed.address]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: "Erreur base de données", detail: err.message });
+  }
+}
+
+// Étape 4.5 : Changer le statut (Archiver/Restaurer) d'un dossier patient
+// Seule la réception et les médecins ont cette habilitation.
+async function updatePatientStatus(req, res) {
+  if (!process.env.DATABASE_URL) {
+    return res.status(500).json({ error: "Configuration serveur incomplète (DATABASE_URL)." });
+  }
+
+  // Règle d'autorisation (RBAC) : Seuls DOCTOR ou RECEPTIONIST peuvent archiver/réactiver
+  if (req.user && req.user.role !== 'RECEPTIONIST' && req.user.role !== 'DOCTOR') {
+    return res.status(403).json({ error: "Seul le personnel de réception ou les médecins peuvent archiver/restaurer un dossier patient." });
+  }
+
+  const { id } = req.params;
+  const { status } = req.body;
+
+  if (status !== 'ACTIVE' && status !== 'ARCHIVED') {
+    return res.status(400).json({ error: "Statut invalide. Utilisez 'ACTIVE' ou 'ARCHIVED'." });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE patients 
+       SET status = $1 
+       WHERE id = $2 
+       RETURNING id, first_name AS "firstName", last_name AS "lastName", phone, email, address, status`,
+      [status, id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Patient introuvable." });
+    }
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("Erreur lors de la mise à jour du statut du patient:", err);
     res.status(500).json({ error: "Erreur base de données", detail: err.message });
   }
 }
@@ -189,6 +238,10 @@ app.post("/api/patients", authenticateToken, createPatient);
 // Étape 4 : Déclaration des routes pour obtenir un patient par son ID
 app.get("/patients/:id", authenticateToken, getPatientById);
 app.get("/api/patients/:id", authenticateToken, getPatientById);
+
+// Étape 4.5 : Routes d'archivage/restauration du patient
+app.patch("/patients/:id/status", authenticateToken, updatePatientStatus);
+app.patch("/api/patients/:id/status", authenticateToken, updatePatientStatus);
 
 app.use((req, res) => {
   res.status(404).json({

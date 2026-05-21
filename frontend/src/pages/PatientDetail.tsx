@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, FormEvent } from "react";
+import { useState, useEffect, useCallback, type FormEvent } from "react";
 import { useAuth } from "../context/AuthContext";
 import "./PatientDetail.css";
 
@@ -7,6 +7,9 @@ interface Patient {
   id: number;
   firstName: string;
   lastName: string;
+  phone?: string;
+  email?: string;
+  address?: string;
   createdAt: string;
 }
 
@@ -265,6 +268,11 @@ export default function PatientDetail({
                 ID Patient : <code>#{patient.id}</code> | Date d'entrée :{" "}
                 {new Date(patient.createdAt).toLocaleDateString()}
               </p>
+              <div style={{ marginTop: "8px", fontSize: "13px", display: "flex", flexWrap: "wrap", gap: "15px", color: "var(--text)" }}>
+                {patient.phone && <span>📞 <strong>Tél :</strong> {patient.phone}</span>}
+                {patient.email && <span>✉️ <strong>Email :</strong> {patient.email}</span>}
+                {patient.address && <span>🏠 <strong>Adresse :</strong> {patient.address}</span>}
+              </div>
             </div>
             <div className="security-badge">
               <span className="shield">🛡️</span> HIPAA Sécurisé

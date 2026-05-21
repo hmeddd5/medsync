@@ -1,137 +1,176 @@
+/* ====================================================================
+   STYLES DE LA PAGE DE CONNEXION (frontend/src/pages/Login.css)
+   ====================================================================
+*/
+
 .login-container {
   display: flex;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background-color: var(--bg);
-  width: 100%;
+  width: 100vw;
+  /* Superbe fond dégradé mesh dynamique */
+  background: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0, transparent 50%),
+              radial-gradient(at 100% 100%, rgba(6, 182, 212, 0.08) 0, transparent 50%),
+              var(--bg-primary);
 }
 
 .login-box {
-  width: 400px;
+  width: 440px;
   max-width: 90%;
-  padding: 40px;
-  background: var(--bg);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
-  border: 1px solid var(--border);
+  padding: 48px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-color);
   text-align: left;
+  animation: loginBoxFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+/* Bande de couleur en haut de la boîte */
+.login-box::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 5px;
+  background: linear-gradient(90deg, var(--primary) 0%, var(--accent-cyan) 100%);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 .login-header {
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 36px;
 }
 
 .login-header h2 {
-  color: #0ea5e9; /* Sky Blue accent for medical feel */
-  font-size: 32px;
+  font-size: 36px;
   margin: 0;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -1px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-family: var(--font-heading);
 }
 
 .login-header p {
-  color: var(--text);
+  color: var(--text-secondary);
   font-size: 14px;
-  margin-top: 5px;
+  margin-top: 8px;
+  font-weight: 600;
 }
 
 .login-error {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  padding: 12px;
-  border-radius: 6px;
-  font-size: 14px;
-  margin-bottom: 20px;
+  background: var(--danger-light);
+  color: var(--danger);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 24px;
   border: 1px solid rgba(239, 68, 68, 0.2);
   text-align: center;
 }
 
 .login-form .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
 .login-form label {
   display: block;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 700;
   margin-bottom: 8px;
-  color: var(--text-h);
+  color: var(--text-primary);
 }
 
 .login-form input {
   width: 100%;
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--code-bg);
-  color: var(--text-h);
-  font-size: 16px;
-  transition: all 0.2s;
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
   box-sizing: border-box;
-}
-
-.login-form input:focus {
-  outline: none;
-  border-color: #0ea5e9;
-  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+  transition: var(--transition-all);
 }
 
 .login-button {
   width: 100%;
   padding: 14px;
-  background: #0ea5e9;
+  background: linear-gradient(135deg, var(--primary) 0%, #4f46e5 100%);
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.2s;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+  transition: var(--transition-all);
 }
 
 .login-button:hover:not(:disabled) {
-  background: #0284c7;
+  background: linear-gradient(135deg, var(--primary-hover) 0%, #4338ca 100%);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+  transform: translateY(-1px);
 }
 
 .login-button:disabled {
-  opacity: 0.7;
+  background: var(--text-muted);
   cursor: not-allowed;
+  box-shadow: none;
 }
 
+/* Section Comptes de Test */
 .login-test-accounts {
-  margin-top: 30px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
+  margin-top: 36px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-color);
   text-align: center;
 }
 
 .login-test-accounts p {
   font-size: 12px;
-  color: var(--text);
-  margin-bottom: 10px;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
 }
 
 .test-buttons {
   display: flex;
   gap: 10px;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .test-buttons button {
-  background: var(--code-bg);
-  border: 1px solid var(--border);
-  color: var(--text-h);
-  padding: 6px 12px;
-  border-radius: 4px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
   font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: var(--transition-all);
 }
 
 .test-buttons button:hover {
-  background: rgba(14, 165, 233, 0.1);
-  border-color: #0ea5e9;
-  color: #0ea5e9;
+  background: var(--primary-light);
+  border-color: var(--border-focus);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+/* Animations */
+@keyframes loginBoxFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
