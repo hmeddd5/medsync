@@ -1,17 +1,14 @@
 {
   "name": "clinical-platform",
+  "private": true,
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Plateforme clinique — frontend + backend",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "concurrently -n api,web -c blue,green \"npm --prefix backend start\" \"npm --prefix frontend run dev\"",
+    "dev:api": "npm --prefix backend start",
+    "dev:web": "npm --prefix frontend run dev"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "cors": "^2.8.6",
-    "express": "^5.2.1"
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }

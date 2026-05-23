@@ -14,6 +14,22 @@ Toutes les étapes du projet ont été complétées avec succès :
 5. **Étape 5 & 6 : Notes Cliniques & Prescriptions** ✅ (Timeline des visites et gestion d'ordonnances)
 6. **Étape 8 : Refonte Visuelle et Design Premium** ✅ (Polices Google Fonts, thème Indigo/Cyan, micro-animations, verre dépoli)
 
+
+---
+
+## 📸 Aperçu de l'Application
+
+Voici un aperçu visuel de l'interface moderne et réactive de la plateforme :
+
+### 1. Page de Connexion (Authentification Sécurisée)
+![Page de Connexion](./screenshots/login.png)
+
+### 2. Agenda Clinique (Planning & Rendez-vous)
+![Agenda Clinique](./screenshots/dashboard.png)
+
+### 3. Gestion des Dossiers Patients (Liste Épurée & Recherche)
+![Gestion des Dossiers Patients](./screenshots/patients.png)
+
 ---
 
 ## 🛠️ Détail des Étapes Réalisées
