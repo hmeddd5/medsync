@@ -59,6 +59,27 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editPatientId, setEditPatientId] = useState<number | null>(null);
+
+  function closeForm() {
+    setFirstName("");
+    setLastName("");
+    setPhone("");
+    setEmail("");
+    setAddress("");
+    setEditPatientId(null);
+    setShowAddModal(false);
+  }
+
+  function startEdit(patient: Patient) {
+    setFirstName(patient.firstName);
+    setLastName(patient.lastName);
+    setPhone(patient.phone || "");
+    setEmail(patient.email || "");
+    setAddress(patient.address || "");
+    setEditPatientId(patient.id);
+    setShowAddModal(true);
+  }
 
   const apiBase = apiBaseUrl();
 
@@ -105,8 +126,13 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
     setFormError(null);
     setSubmitting(true);
     try {
-      const res = await fetch(patientsUrl(apiBase), {
-        method: "POST",
+      const url = editPatientId 
+        ? `${patientsUrl(apiBase)}/${editPatientId}` 
+        : patientsUrl(apiBase);
+      const method = editPatientId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ 
           firstName: firstName.trim(), 
@@ -118,7 +144,7 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
       });
       if (res.status === 401 || res.status === 403) { logout(); return; }
       if (!res.ok) throw new Error("Erreur serveur");
-      setFirstName(""); setLastName(""); setPhone(""); setEmail(""); setAddress("");
+      closeForm();
       await loadPatients();
     } catch (err: unknown) {
       setFormError("Erreur lors de l'enregistrement.");
@@ -244,6 +270,11 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
                             Dossier complet
                           </button>
                           {(user?.role === 'RECEPTIONIST' || user?.role === 'DOCTOR') && (
+                            <button className="btn-outline" onClick={() => startEdit(patient)} style={{ borderColor: "var(--primary)", color: "var(--primary)" }}>
+                              ✏️ Modifier
+                            </button>
+                          )}
+                          {(user?.role === 'RECEPTIONIST' || user?.role === 'DOCTOR') && (
                             <button 
                               className="btn-archive"
                               onClick={() => togglePatientStatus(patient.id, 'ACTIVE')} 
@@ -271,13 +302,10 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
         </div>
       )}
       {showAddModal && (
-        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+        <div className="modal-overlay" onClick={closeForm}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>Enregistrer un nouveau patient</h2>
-            <form onSubmit={async (e) => {
-              await handleSubmit(e);
-              setShowAddModal(false);
-            }}>
+            <h2>{editPatientId ? "Modifier le dossier patient" : "Enregistrer un nouveau patient"}</h2>
+            <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Prénom</label>
                 <input value={firstName} onChange={(ev) => setFirstName(ev.target.value)} required disabled={submitting} />
@@ -300,7 +328,7 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
               </div>
               {formError && <p style={{ color: "crimson", fontSize: "13px", fontWeight: "600" }}>{formError}</p>}
               <div className="modal-actions">
-                <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)} disabled={submitting}>
+                <button type="button" className="btn-secondary" onClick={closeForm} disabled={submitting}>
                   Annuler
                 </button>
                 <button type="submit" className="btn-primary" disabled={submitting} style={{ margin: 0 }}>

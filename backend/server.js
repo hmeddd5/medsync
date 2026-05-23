@@ -219,6 +219,42 @@ async function updatePatientStatus(req, res) {
   }
 }
 
+async function updatePatient(req, res) {
+  if (!process.env.DATABASE_URL) {
+    return res.status(500).json({ error: "Configuration serveur incomplète (DATABASE_URL)." });
+  }
+
+  // Règle d'autorisation (RBAC) : Seuls RECEPTIONIST ou DOCTOR peuvent éditer un dossier patient
+  if (req.user && req.user.role !== 'RECEPTIONIST' && req.user.role !== 'DOCTOR') {
+    return res.status(403).json({ error: "Seul le personnel de réception ou les médecins peuvent modifier un dossier patient." });
+  }
+
+  const { id } = req.params;
+  const parsed = parsePatientBody(req.body);
+  if (parsed.error) {
+    return res.status(400).json({ error: parsed.error });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE patients 
+       SET first_name = $1, last_name = $2, phone = $3, email = $4, address = $5
+       WHERE id = $6 
+       RETURNING id, first_name AS "firstName", last_name AS "lastName", phone, email, address, status`,
+      [parsed.firstName, parsed.lastName, parsed.phone, parsed.email, parsed.address, id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: "Patient introuvable." });
+    }
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("Erreur lors de la modification du patient:", err);
+    res.status(500).json({ error: "Erreur base de données", detail: err.message });
+  }
+}
+
 // Route Auth
 app.use("/api/auth", authRoutes(pool));
 
@@ -242,6 +278,10 @@ app.get("/api/patients/:id", authenticateToken, getPatientById);
 // Étape 4.5 : Routes d'archivage/restauration du patient
 app.patch("/patients/:id/status", authenticateToken, updatePatientStatus);
 app.patch("/api/patients/:id/status", authenticateToken, updatePatientStatus);
+
+// Routes pour modifier les détails du patient
+app.put("/patients/:id", authenticateToken, updatePatient);
+app.put("/api/patients/:id", authenticateToken, updatePatient);
 
 app.use((req, res) => {
   res.status(404).json({
