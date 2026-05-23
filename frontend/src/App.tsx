@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { CSSProperties, FormEvent } from "react";
+import type { FormEvent } from "react";
 import Login from "./pages/Login";
 import Appointments from "./pages/Appointments";
 import { useAuth } from "./context/AuthContext";
@@ -58,6 +58,7 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const apiBase = apiBaseUrl();
 
@@ -154,64 +155,34 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
     }
   }
 
-  const inputStyle: CSSProperties = {
-    padding: "0.5rem 0.75rem", borderRadius: 6, border: "1px solid var(--border)",
-    background: "var(--bg)", color: "var(--text-h)", width: "100%", boxSizing: "border-box",
-  };
-
   return (
     <div className="view-container">
       <div className="view-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "15px", marginBottom: "30px" }}>
         <h1 style={{ margin: 0 }}>Dossiers Patients</h1>
-        {(user?.role === 'RECEPTIONIST' || user?.role === 'DOCTOR') && (
-          <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", cursor: "pointer", color: "var(--text)", background: "var(--bg)", padding: "6px 12px", borderRadius: "6px", border: "1px solid var(--border)" }}>
-            <input 
-              type="checkbox" 
-              checked={showArchived} 
-              onChange={(e) => setShowArchived(e.target.checked)} 
-              style={{ width: "auto", margin: 0, padding: 0, pointerEvents: "auto" }} 
-            />
-            Afficher les dossiers archivés
-          </label>
-        )}
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          {!showArchived && user?.role === 'RECEPTIONIST' && (
+            <button className="btn-primary" onClick={() => setShowAddModal(true)} style={{ margin: 0 }}>
+              + Nouveau patient
+            </button>
+          )}
+          {(user?.role === 'RECEPTIONIST' || user?.role === 'DOCTOR') && (
+            <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", cursor: "pointer", color: "var(--text-secondary)", background: "var(--bg-card)", padding: "8px 16px", borderRadius: "8px", border: "1px solid var(--border-color)", margin: 0 }}>
+              <input 
+                type="checkbox" 
+                checked={showArchived} 
+                onChange={(e) => setShowArchived(e.target.checked)} 
+                style={{ width: "auto", margin: 0, padding: 0, pointerEvents: "auto" }} 
+              />
+              Afficher les dossiers archivés
+            </label>
+          )}
+        </div>
       </div>
 
       <div style={{ marginBottom: "1rem" }}>
         {loading && <p>Chargement des patients…</p>}
         {error && <p style={{ color: "crimson" }}>{error}</p>}
       </div>
-
-      {!showArchived && user?.role === 'RECEPTIONIST' && (
-        <section style={{ maxWidth: 420, margin: "0 0 2rem", padding: "1.25rem", border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg)" }}>
-          <h2 style={{ fontSize: "1.1rem", marginTop: 0 }}>Nouveau patient</h2>
-          <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: "0.75rem" }}>
-              <label style={{ display: "block", marginBottom: 4, color: "var(--text)" }}>Prénom</label>
-              <input value={firstName} onChange={(ev) => setFirstName(ev.target.value)} style={inputStyle} required disabled={submitting} />
-            </div>
-            <div style={{ marginBottom: "0.75rem" }}>
-              <label style={{ display: "block", marginBottom: 4, color: "var(--text)" }}>Nom</label>
-              <input value={lastName} onChange={(ev) => setLastName(ev.target.value)} style={inputStyle} required disabled={submitting} />
-            </div>
-            <div style={{ marginBottom: "0.75rem" }}>
-              <label style={{ display: "block", marginBottom: 4, color: "var(--text)" }}>Téléphone</label>
-              <input value={phone} onChange={(ev) => setPhone(ev.target.value)} placeholder="ex: +221 77 123 45 67" style={inputStyle} disabled={submitting} />
-            </div>
-            <div style={{ marginBottom: "0.75rem" }}>
-              <label style={{ display: "block", marginBottom: 4, color: "var(--text)" }}>Adresse Email</label>
-              <input type="email" value={email} onChange={(ev) => setEmail(ev.target.value)} placeholder="ex: patient@email.com" style={inputStyle} disabled={submitting} />
-            </div>
-            <div style={{ marginBottom: "0.75rem" }}>
-              <label style={{ display: "block", marginBottom: 4, color: "var(--text)" }}>Adresse Domicile</label>
-              <input value={address} onChange={(ev) => setAddress(ev.target.value)} placeholder="ex: Dakar, Medina" style={inputStyle} disabled={submitting} />
-            </div>
-            {formError && <p style={{ color: "crimson" }}>{formError}</p>}
-            <button type="submit" disabled={submitting} style={{ padding: "0.5rem 1rem", borderRadius: 6, border: "none", background: "#0ea5e9", color: "white", fontWeight: 600, cursor: "pointer", width: "100%" }}>
-              {submitting ? "Enregistrement…" : "Ajouter au dossier"}
-            </button>
-          </form>
-        </section>
-      )}
 
       {!loading && !error && patients.length > 0 && (
         <div className="search-bar-container">
@@ -297,6 +268,47 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {showAddModal && (
+        <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h2>Enregistrer un nouveau patient</h2>
+            <form onSubmit={async (e) => {
+              await handleSubmit(e);
+              setShowAddModal(false);
+            }}>
+              <div className="form-group">
+                <label>Prénom</label>
+                <input value={firstName} onChange={(ev) => setFirstName(ev.target.value)} required disabled={submitting} />
+              </div>
+              <div className="form-group">
+                <label>Nom</label>
+                <input value={lastName} onChange={(ev) => setLastName(ev.target.value)} required disabled={submitting} />
+              </div>
+              <div className="form-group">
+                <label>Téléphone</label>
+                <input value={phone} onChange={(ev) => setPhone(ev.target.value)} placeholder="ex: +221 77 123 45 67" disabled={submitting} />
+              </div>
+              <div className="form-group">
+                <label>Adresse Email</label>
+                <input type="email" value={email} onChange={(ev) => setEmail(ev.target.value)} placeholder="ex: patient@email.com" disabled={submitting} />
+              </div>
+              <div className="form-group">
+                <label>Adresse Domicile</label>
+                <input value={address} onChange={(ev) => setAddress(ev.target.value)} placeholder="ex: Dakar, Medina" disabled={submitting} />
+              </div>
+              {formError && <p style={{ color: "crimson", fontSize: "13px", fontWeight: "600" }}>{formError}</p>}
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={() => setShowAddModal(false)} disabled={submitting}>
+                  Annuler
+                </button>
+                <button type="submit" className="btn-primary" disabled={submitting} style={{ margin: 0 }}>
+                  Enregistrer
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
