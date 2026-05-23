@@ -57,8 +57,24 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
   const [showArchived, setShowArchived] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const apiBase = apiBaseUrl();
+
+  const filteredPatients = patients.filter((p) => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return true;
+    const fullName = `${p.firstName} ${p.lastName}`.toLowerCase();
+    const reverseFullName = `${p.lastName} ${p.firstName}`.toLowerCase();
+    return (
+      fullName.includes(query) ||
+      reverseFullName.includes(query) ||
+      p.id.toString().includes(query) ||
+      (p.phone && p.phone.toLowerCase().includes(query)) ||
+      (p.email && p.email.toLowerCase().includes(query)) ||
+      (p.address && p.address.toLowerCase().includes(query))
+    );
+  });
 
   const loadPatients = useCallback(async () => {
     if (!token) return;
@@ -197,58 +213,90 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
         </section>
       )}
 
+      {!loading && !error && patients.length > 0 && (
+        <div className="search-bar-container">
+          <span className="search-icon">🔍</span>
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Rechercher un patient (Nom, Prénom, Téléphone, ID...)"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+      )}
+
       {!loading && !error && patients.length === 0 && (
         <p>{showArchived ? "Aucun dossier archivé." : "Aucun patient actif enregistré."}</p>
       )}
 
-      {!loading && patients.length > 0 && (
-        <div className="patients-grid">
-          {patients.map((patient) => (
-            <div 
-              key={patient.id} 
-              className="patient-card" 
-              style={patient.status === 'ARCHIVED' ? { opacity: 0.8, borderStyle: 'dashed', borderColor: '#94a3b8' } : {}}
-            >
-              <div style={{ textAlign: "left" }}>
-                <h3 style={{ margin: "0 0 5px 0", fontSize: "16px", display: "flex", alignItems: "center", gap: "8px" }}>
-                  {patient.lastName.toUpperCase()} {patient.firstName}
-                  {patient.status === 'ARCHIVED' && (
-                    <span style={{ fontSize: "10px", background: "#6b7280", color: "white", padding: "2px 6px", borderRadius: "4px", fontWeight: "normal" }}>Archivé</span>
-                  )}
-                </h3>
-                <p style={{ margin: "0 0 4px 0", fontSize: "12px", color: "var(--text)" }}>ID Patient : #{patient.id}</p>
-                {patient.phone && <p style={{ margin: 0, fontSize: "11px", color: "var(--text)", display: "flex", alignItems: "center", gap: "4px" }}><span>📞</span> {patient.phone}</p>}
-                {patient.email && <p style={{ margin: 0, fontSize: "11px", color: "var(--text)", display: "flex", alignItems: "center", gap: "4px" }}><span>✉️</span> {patient.email}</p>}
-              </div>
-              
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px", alignItems: "flex-end" }}>
-                {patient.status !== 'ARCHIVED' ? (
-                  <>
-                    <button className="btn-outline" onClick={() => onOpenDetail(patient.id)}>
-                      Dossier complet
-                    </button>
-                    {(user?.role === 'RECEPTIONIST' || user?.role === 'DOCTOR') && (
-                      <button 
-                        onClick={() => togglePatientStatus(patient.id, 'ACTIVE')} 
-                        style={{ background: "transparent", border: "1px solid #f97316", color: "#f97316", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer", fontWeight: "600" }}
-                      >
-                        Archiver
-                      </button>
-                    )}
-                  </>
-                ) : (
-                  (user?.role === 'RECEPTIONIST' || user?.role === 'DOCTOR') && (
-                    <button 
-                      onClick={() => togglePatientStatus(patient.id, 'ARCHIVED')} 
-                      style={{ background: "transparent", border: "1px solid #10b981", color: "#10b981", padding: "4px 8px", borderRadius: "4px", fontSize: "11px", cursor: "pointer", fontWeight: "600" }}
-                    >
-                      Réactiver
-                    </button>
-                  )
-                )}
-              </div>
-            </div>
-          ))}
+      {!loading && !error && patients.length > 0 && filteredPatients.length === 0 && (
+        <p style={{ color: "var(--text-muted)", fontStyle: "italic", marginTop: "20px" }}>
+          Aucun patient ne correspond à votre recherche.
+        </p>
+      )}
+
+      {!loading && !error && filteredPatients.length > 0 && (
+        <div className="table-responsive">
+          <table className="patients-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nom complet</th>
+                <th>Téléphone</th>
+                <th>Email</th>
+                <th>Adresse</th>
+                <th>Statut</th>
+                <th style={{ textAlign: "right" }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPatients.map((patient) => (
+                <tr key={patient.id} className={patient.status === 'ARCHIVED' ? 'row-archived' : ''}>
+                  <td><code>#{patient.id}</code></td>
+                  <td>
+                    <strong>{patient.lastName.toUpperCase()}</strong> {patient.firstName}
+                  </td>
+                  <td>{patient.phone || <span className="text-muted">-</span>}</td>
+                  <td>{patient.email || <span className="text-muted">-</span>}</td>
+                  <td>{patient.address || <span className="text-muted">-</span>}</td>
+                  <td>
+                    <span className={`status-badge ${patient.status === 'ARCHIVED' ? 'badge-archived' : 'badge-active'}`}>
+                      {patient.status === 'ARCHIVED' ? 'Archivé' : 'Actif'}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+                      {patient.status !== 'ARCHIVED' ? (
+                        <>
+                          <button className="btn-outline" onClick={() => onOpenDetail(patient.id)}>
+                            Dossier complet
+                          </button>
+                          {(user?.role === 'RECEPTIONIST' || user?.role === 'DOCTOR') && (
+                            <button 
+                              className="btn-archive"
+                              onClick={() => togglePatientStatus(patient.id, 'ACTIVE')} 
+                            >
+                              Archiver
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        (user?.role === 'RECEPTIONIST' || user?.role === 'DOCTOR') && (
+                          <button 
+                            className="btn-reactivate"
+                            onClick={() => togglePatientStatus(patient.id, 'ARCHIVED')} 
+                          >
+                            Réactiver
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
