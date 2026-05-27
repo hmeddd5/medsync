@@ -9,6 +9,7 @@ const authRoutes = require("./routes/auth");
 const appointmentRoutes = require("./routes/appointments");
 // Étape 4 : Importation des routes du dossier médical (notes et prescriptions)
 const recordRoutes = require("./routes/records");
+const { initDb } = require("./db-init");
 
 const app = express();
 
@@ -18,6 +19,12 @@ const SERVER_FILE = __filename;
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
+
+// Initialiser les tables et injecter les données de démonstration au démarrage
+initDb(pool).catch((err) => {
+  console.error("[DB-INIT-ERROR] Impossible d'initialiser la base de données :", err);
+});
+
 
 app.use(
   cors({
