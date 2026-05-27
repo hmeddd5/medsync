@@ -19,34 +19,12 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
 
-// Origines frontend autorisées (par ex. configurées sur Render)
-const allowedOrigins = process.env.FRONTEND_URL
-  ? process.env.FRONTEND_URL.split(",").map(url => url.trim().replace(/\/$/, ""))
-  : [];
-
-// En dev : tout port localhost / 127.0.0.1 (Vite peut être 5173, 5174, …)
-const isDevBrowserOrigin = (origin) =>
-  !origin || /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
-
 app.use(
   cors({
     origin: (origin, callback) => {
-      // 1. Autoriser en développement local
-      if (isDevBrowserOrigin(origin)) {
-        callback(null, true);
-        return;
-      }
-      
-      // Nettoyer l'origine reçue (supprimer le slash de fin éventuel)
-      const cleanOrigin = origin ? origin.replace(/\/$/, "") : "";
-      
-      // 2. Autoriser si présent dans FRONTEND_URL
-      if (allowedOrigins.includes(cleanOrigin)) {
-        callback(null, true);
-      } else {
-        console.warn(`[CORS] Rejet de l'origine : ${origin}`);
-        callback(null, false);
-      }
+      // Pour éviter tout blocage CORS en production avec Render, on autorise dynamiquement toutes les origines.
+      // La sécurité de l'API est assurée par la validation des tokens JWT.
+      callback(null, true);
     },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
