@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
+import { apiBaseUrl } from "../config";
 import "./Appointments.css";
 
 type Appointment = {
@@ -35,7 +36,7 @@ export default function Appointments() {
     if (!token) return;
     try {
       setLoading(true);
-      const res = await fetch("/api/appointments", {
+      const res = await fetch(`${apiBaseUrl()}/api/appointments`, {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (!res.ok) throw new Error("Erreur de récupération de l'agenda");
@@ -55,7 +56,7 @@ export default function Appointments() {
   // Chargement des patients pour le formulaire modal (Seulement pour réceptionniste)
   useEffect(() => {
     if (user?.role === "RECEPTIONIST" && showModal && patients.length === 0) {
-      fetch("/api/patients", { headers: { "Authorization": `Bearer ${token}` } })
+      fetch(`${apiBaseUrl()}/api/patients`, { headers: { "Authorization": `Bearer ${token}` } })
         .then(res => res.json())
         .then(data => setPatients(data))
         .catch(err => console.error(err));
@@ -70,7 +71,7 @@ export default function Appointments() {
     const dateObj = new Date(`${appointmentDate}T${appointmentTime}:00`);
 
     try {
-      const res = await fetch("/api/appointments", {
+      const res = await fetch(`${apiBaseUrl()}/api/appointments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -102,7 +103,7 @@ export default function Appointments() {
 
   const updateStatus = async (id: number, newStatus: string) => {
     try {
-      const res = await fetch(`/api/appointments/${id}/status`, {
+      const res = await fetch(`${apiBaseUrl()}/api/appointments/${id}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

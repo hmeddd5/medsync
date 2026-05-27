@@ -5,6 +5,7 @@ import Appointments from "./pages/Appointments";
 import { useAuth } from "./context/AuthContext";
 // Étape 4 : Importation de la nouvelle page de détail du patient
 import PatientDetail from "./pages/PatientDetail";
+import { apiBaseUrl } from "./config";
 import "./App.css"; // We'll need to create this for the sidebar
 
 export type Patient = {
@@ -16,15 +17,6 @@ export type Patient = {
   address?: string;
   status?: string;
 };
-
-function apiBaseUrl(): string {
-  const fromEnv = import.meta.env.VITE_API_URL;
-  if (typeof fromEnv === "string" && fromEnv.trim() !== "") {
-    return fromEnv.replace(/\/$/, "");
-  }
-  if (import.meta.env.DEV) return "";
-  return "http://127.0.0.1:5001";
-}
 
 function patientsUrl(apiBase: string): string {
   const path = "/patients";

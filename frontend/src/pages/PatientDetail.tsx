@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, type FormEvent } from "react";
 import { useAuth } from "../context/AuthContext";
+import { apiBaseUrl } from "../config";
 import "./PatientDetail.css";
 
 // Déclaration de l'interface décrivant l'objet Patient
@@ -32,15 +33,6 @@ interface Prescription {
   createdAt: string;
   doctorFirstName: string;
   doctorLastName: string;
-}
-
-// L'URL de base du backend API
-function apiBaseUrl(): string {
-  const fromEnv = import.meta.env.VITE_API_URL;
-  if (typeof fromEnv === "string" && fromEnv.trim() !== "") {
-    return fromEnv.replace(/\/$/, "");
-  }
-  return ""; // Par défaut vide car Vite possède un proxy configuré dans vite.config.ts
 }
 
 // Composant principal du Détail du Patient
