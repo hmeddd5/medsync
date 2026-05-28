@@ -1,6 +1,6 @@
-# Plateforme Clinique - Guide du Projet & Préparation aux Entretiens
+# EpicClinical Web — Portail de Dossiers Patients & Agenda Médical Fullstack
 
-Ce document explique le fonctionnement de la plateforme clinique étape par étape. Il t'aidera à comprendre chaque fonctionnalité et à l'expliquer simplement lors d'un entretien de recrutement.
+EpicClinical Web est un portail EHR (Electronic Health Record) sécurisé et performant facilitant le suivi des patients et la planification des rendez-vous médicaux pour les cliniques médicales.
 
 ---
 
@@ -77,22 +77,7 @@ Nous avons mis en place une gestion des utilisateurs basée sur les rôles (Role
 
 ---
 
-## 💡 Préparation aux Entretiens : Questions / Réponses type
+## 💡 Préparation aux Entretiens
 
-### Q1: Comment fonctionne la sécurité dans ton application ?
-*   **Réponse :** "La sécurité repose sur deux piliers :
-    1.  **L'authentification par JWT** : Une fois connecté, l'utilisateur reçoit un token crypté qui valide son identité à chaque requête API.
-    2.  **L'autorisation par rôles (RBAC)** : Côté backend, j'ai des middlewares qui vérifient si le rôle (ex: `DOCTOR` ou `RECEPTIONIST`) a le droit d'exécuter l'action (comme prescrire un médicament ou annuler un rendez-vous). Côté frontend, l'interface s'adapte dynamiquement pour masquer ou désactiver les actions non autorisées."
-
-### Q2: Pourquoi avoir créé un statut d'archivage au lieu de supprimer le patient de la base de données ?
-*   **Réponse :** "Dans le domaine de la santé, la réglementation interdit généralement de supprimer définitivement les données médicales d'un patient pour des raisons de traçabilité et de responsabilité légale. J'ai donc implémenté un système de **suppression logique (Soft Delete)** via un statut `ARCHIVED` en base de données. Le patient est retiré des flux actifs mais reste disponible pour restauration."
-
-### Q3: Comment as-tu structuré ta base de données pour ce projet ?
-*   **Réponse :** "J'ai conçu un schéma relationnel sous **PostgreSQL** avec plusieurs tables reliées par des clés étrangères :
-    - `users` : gère le personnel médical (rôles, mots de passe hashés avec bcrypt).
-    - `patients` : stocke les informations administratives (nom, prénom, téléphone, statut d'archivage).
-    - `appointments` : lie un patient à un médecin avec une date, un motif et un statut.
-    - `medical_records` & `prescriptions` : stockent l'historique clinique rédigé par les praticiens."
-
-### Q4: Comment as-tu optimisé l'ergonomie et l'interface utilisateur ?
-*   **Réponse :** "J'ai banni le design générique pour créer une interface premium et aérée. J'ai importé des polices modernes (`Plus Jakarta Sans` & `Outfit`), implémenté des ombres portées douces, des micro-animations de transition au survol des cartes, et des fenêtres modales en verre dépoli (glassmorphism). J'ai aussi veillé au contraste des inputs pour garantir l'accessibilité dans tous les navigateurs."
+Pour vous préparer à expliquer les détails techniques de ce projet (sécurité RBAC, choix de base de données PostgreSQL, archivage logique/HIPAA, etc.) lors d'entretiens de recrutement, un guide complet de questions/réponses est disponible dans le fichier dédié :
+👉 **[Guide de Préparation aux Entretiens](file:///c:/Users/hp/Desktop/clinical-platform/PREPARATION_ENTRETIEN.md)**
