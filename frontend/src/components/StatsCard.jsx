@@ -1,7 +1,10 @@
-function StatsCard({ title, value, icon, detail }) {
+function StatsCard({ title, value, detail, icon }) {
   return (
     <div className="stat-card">
-      <div className="stat-icon">{icon}</div>
+      <div className="stat-icon">
+        {icon}
+      </div>
+
       <div>
         <p>{title}</p>
         <h3>{value}</h3>
