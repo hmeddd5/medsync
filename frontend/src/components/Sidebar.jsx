@@ -10,6 +10,12 @@ const menuItems = [
 ];
 
 function Sidebar() {
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.reload();
+  };
+
   return (
     <aside className="sidebar">
       <div>
@@ -36,12 +42,18 @@ function Sidebar() {
         </nav>
       </div>
 
-      <div className="sidebar-profile">
-        <div className="avatar">SB</div>
-        <div>
-          <strong>Dr. Sarah Benali</strong>
-          <span>Médecin généraliste</span>
+      <div>
+        <div className="sidebar-profile">
+          <div className="avatar">SB</div>
+          <div>
+            <strong>Dr. Sarah Benali</strong>
+            <span>Médecin généraliste</span>
+          </div>
         </div>
+
+        <button className="logout-btn" onClick={handleLogout}>
+          Déconnexion
+        </button>
       </div>
     </aside>
   );

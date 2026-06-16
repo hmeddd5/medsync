@@ -571,3 +571,18 @@ body {
   margin-bottom: 18px;
   font-weight: 700;
 }
+.logout-btn {
+  width: 100%;
+  margin-top: 14px;
+  border: none;
+  background: rgba(239, 68, 68, 0.16);
+  color: #fecaca;
+  padding: 13px;
+  border-radius: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+}

@@ -10,10 +10,16 @@ import Prescriptions from "./pages/Prescriptions";
 import AnalyseIA from "./pages/AnalyseIA";
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    localStorage.getItem("token") ? true : false
+  );
+
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+  };
 
   if (!isLoggedIn) {
-    return <Login onLogin={() => setIsLoggedIn(true)} />;
+    return <Login onLogin={handleLogin} />;
   }
 
   return (
