@@ -4,8 +4,7 @@ export interface User {
   id: number;
   role: string;
   email: string;
-  firstName: string;
-  lastName: string;
+  fullName: string;
 }
 
 interface AuthContextType {

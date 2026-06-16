@@ -1,16 +1,16 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: clinical-platform-db
+    container_name: medyia-db
     environment:
-      POSTGRES_USER: clinical
-      POSTGRES_PASSWORD: clinical
-      POSTGRES_DB: clinical
+      POSTGRES_USER: medyia
+      POSTGRES_PASSWORD: medyia
+      POSTGRES_DB: medyia
     ports:
       - "5432:5432"
     volumes:
-      - clinical_pgdata:/var/lib/postgresql/data
+      - medyia_pgdata:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
 
 volumes:
-  clinical_pgdata:
+  medyia_pgdata:

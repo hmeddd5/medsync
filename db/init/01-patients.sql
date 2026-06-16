@@ -6,5 +6,5 @@ CREATE TABLE IF NOT EXISTS patients (
 );
 
 INSERT INTO patients (first_name, last_name) VALUES
-  ('Aminata', 'Diallo'),
-  ('Mamadou', 'Fall');
+('Akram', 'Boughlala'),
+('Ahmad', 'Errakab');

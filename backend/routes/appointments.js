@@ -1,35 +1,29 @@
-const express = require("express");
-const { authenticateToken } = require("../middleware/auth");
+  const express = require("express");
 
-module.exports = (pool) => {
+  module.exports = (pool) => {
   const router = express.Router();
 
   // GET /api/appointments
-  router.get("/", authenticateToken, async (req, res) => {
+  router.get("/", async (req, res) => {
     try {
-      const user = req.user;
-      
-      let query = `
+      const query = `
         SELECT 
-          a.id, a.appointment_date AS "appointmentDate", a.reason, a.status,
-          p.id AS "patientId", p.first_name AS "patientFirstName", p.last_name AS "patientLastName",
-          s.id AS "doctorId", s.first_name AS "doctorFirstName", s.last_name AS "doctorLastName"
+          a.id,
+          a.appointment_date AS "appointmentDate",
+          a.status,
+          p.id AS "patientId",
+          p.first_name AS "patientFirstName",
+          p.last_name AS "patientLastName",
+          s.id AS "staffId",
+          s.full_name AS "staffName",
+          s.role AS "staffRole"
         FROM appointments a
         JOIN patients p ON a.patient_id = p.id
-        JOIN staff s ON a.doctor_id = s.id
+        JOIN staff s ON a.staff_id = s.id
+        ORDER BY a.appointment_date ASC
       `;
 
-      const values = [];
-
-      // Si c'est un médecin, il ne voit que ses propres rendez-vous
-      if (user.role === 'DOCTOR') {
-        query += ` WHERE a.doctor_id = $1`;
-        values.push(user.id);
-      }
-      
-      query += ` ORDER BY a.appointment_date ASC`;
-
-      const { rows } = await pool.query(query, values);
+      const { rows } = await pool.query(query);
       res.json(rows);
     } catch (err) {
       console.error(err);
@@ -38,25 +32,19 @@ module.exports = (pool) => {
   });
 
   // POST /api/appointments
-  router.post("/", authenticateToken, async (req, res) => {
+    router.post("/", async (req, res) => {
     try {
-      const user = req.user;
-      
-      // Seule la réception (et peut-être Admin si implémenté plus tard) peut créer un RDV
-      if (user.role !== 'RECEPTIONIST') {
-        return res.status(403).json({ error: "Seul le personnel de réception peut planifier un rendez-vous." });
-      }
+      const { patientId, staffId, appointmentDate, status } = req.body;
 
-      const { patientId, doctorId, appointmentDate, reason } = req.body;
-
-      if (!patientId || !doctorId || !appointmentDate || !reason) {
-        return res.status(400).json({ error: "Veuillez fournir toutes les informations nécessaires." });
+      if (!patientId || !staffId || !appointmentDate) {
+        return res.status(400).json({ error: "Veuillez fournir patientId, staffId et appointmentDate." });
       }
 
       const { rows } = await pool.query(
-        `INSERT INTO appointments (patient_id, doctor_id, appointment_date, reason) 
-         VALUES ($1, $2, $3, $4) RETURNING *`,
-        [patientId, doctorId, appointmentDate, reason]
+        `INSERT INTO appointments (patient_id, staff_id, appointment_date, status)
+         VALUES ($1, $2, $3, $4)
+         RETURNING *`,
+        [patientId, staffId, appointmentDate, status || "scheduled"]
       );
 
       res.status(201).json(rows[0]);
@@ -67,22 +55,15 @@ module.exports = (pool) => {
   });
 
   // PATCH /api/appointments/:id/status
-  router.patch("/:id/status", authenticateToken, async (req, res) => {
+    router.patch("/:id/status", async (req, res) => {
     try {
-      const user = req.user;
       const { id } = req.params;
       const { status } = req.body;
 
-      const validStatuses = ['SCHEDULED', 'COMPLETED', 'CANCELLED', 'NO_SHOW'];
+      const validStatuses = ["scheduled", "confirmed", "completed", "cancelled"];
+
       if (!validStatuses.includes(status)) {
         return res.status(400).json({ error: "Statut invalide." });
-      }
-
-      // Règles métiers : 
-      // La réception peut tout faire (Annuler, etc.)
-      // Un médecin peut marquer comme COMPLETED ou NO_SHOW ses propres RDVs
-      if (user.role === 'DOCTOR' && status === 'CANCELLED') {
-        return res.status(403).json({ error: "Un médecin ne peut pas annuler un rendez-vous (veuillez contacter la réception)." });
       }
 
       const { rows } = await pool.query(

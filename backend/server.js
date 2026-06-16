@@ -47,9 +47,9 @@ app.use((req, _res, next) => {
 
 app.get("/", (_req, res) => {
   res.type("html").send(`<!doctype html>
-<html lang="fr"><meta charset="utf-8"><title>API clinical-platform</title>
+<html lang="fr"><meta charset="utf-8"><title>API MedyIA</title>
 <body style="font-family:system-ui;padding:1.5rem">
-  <h1>API clinical-platform</h1>
+  <h1>API MedyIA</h1>
   <p>Si tu vois cette page, tu es bien sur le <strong>backend</strong> (Node / Express).</p>
   <p><small>Démarrage : <code>${BOOT}</code><br>Fichier : <code>${SERVER_FILE}</code></small></p>
   <ul>
@@ -83,22 +83,22 @@ app.get("/health", healthHandler);
 app.get("/api/health", healthHandler);
 
 async function listPatients(req, res) {
-  if (!process.env.DATABASE_URL) {
-    console.error("DATABASE_URL manquant : copie backend/.env.example vers backend/.env");
-    return res.status(500).json({ error: "Configuration serveur incomplète (DATABASE_URL)." });
-  }
-  
-  // Par défaut, on ne retourne que les patients actifs ('ACTIVE')
-  const status = req.query.status === "ARCHIVED" ? "ARCHIVED" : "ACTIVE";
-
   try {
-    const { rows } = await pool.query(
-      `SELECT id, first_name AS "firstName", last_name AS "lastName", phone, email, address, status
-       FROM patients
-       WHERE status = $1
-       ORDER BY id`,
-      [status]
-    );
+    const { rows } = await pool.query(`
+      SELECT 
+        p.id,
+        p.first_name AS "firstName",
+        p.last_name AS "lastName",
+        d.phone,
+        d.email,
+        d.allergies,
+        d.chronic_conditions AS "chronicConditions",
+        p.created_at AS "createdAt"
+      FROM patients p
+      LEFT JOIN patient_details d ON d.patient_id = p.id
+      ORDER BY p.id
+    `);
+
     res.json(rows);
   } catch (err) {
     console.error(err);
@@ -107,29 +107,37 @@ async function listPatients(req, res) {
 }
 
 // Étape 4 : Récupérer les informations d'un seul patient par son ID
-// Cette route est accessible par tout le personnel connecté (Docteurs, Infirmiers, Réceptionnistes)
+// Cette route est accessible par tout le personnel connecté (Docteurs, Infirmiers, Admin)
 // car tout le monde a besoin d'identifier le patient.
 async function getPatientById(req, res) {
-  if (!process.env.DATABASE_URL) {
-    return res.status(500).json({ error: "Configuration serveur incomplète (DATABASE_URL)." });
-  }
-  const { id } = req.params; // On extrait l'id passé dans l'URL (ex: /api/patients/3)
+  const { id } = req.params;
+
   try {
     const { rows } = await pool.query(
-      `SELECT id, first_name AS "firstName", last_name AS "lastName", phone, email, address, created_at AS "createdAt"
-       FROM patients
-       WHERE id = $1`,
-      [id] // Requête paramétrée sécurisée
+      `
+      SELECT 
+        p.id,
+        p.first_name AS "firstName",
+        p.last_name AS "lastName",
+        d.phone,
+        d.email,
+        d.allergies,
+        d.chronic_conditions AS "chronicConditions",
+        p.created_at AS "createdAt"
+      FROM patients p
+      LEFT JOIN patient_details d ON d.patient_id = p.id
+      WHERE p.id = $1
+      `,
+      [id]
     );
 
-    // Si aucun patient ne possède cet ID
     if (rows.length === 0) {
-      return res.status(404).json({ error: "Patient introuvable dans la base de données." });
+      return res.status(404).json({ error: "Patient introuvable." });
     }
 
-    res.json(rows[0]); // Renvoie le patient trouvé sous forme d'objet JSON
+    res.json(rows[0]);
   } catch (err) {
-    console.error("Erreur lors de la récupération du patient par ID:", err);
+    console.error("Erreur patient:", err);
     res.status(500).json({ error: "Erreur base de données", detail: err.message });
   }
 }
@@ -162,9 +170,9 @@ async function createPatient(req, res) {
     return res.status(500).json({ error: "Configuration serveur incomplète (DATABASE_URL)." });
   }
 
-  // Seuls les réceptionnistes ont le droit de créer des dossiers patients
-  if (req.user && req.user.role !== 'RECEPTIONIST') {
-    return res.status(403).json({ error: "Seul le personnel de réception peut créer un dossier patient." });
+  // Seuls les Admin ont le droit de créer des dossiers patients
+  if (req.user && req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: "Seul le personnel de Admin peut créer un dossier patient." });
   }
 
   const parsed = parsePatientBody(req.body);
@@ -186,15 +194,15 @@ async function createPatient(req, res) {
 }
 
 // Étape 4.5 : Changer le statut (Archiver/Restaurer) d'un dossier patient
-// Seule la réception et les médecins ont cette habilitation.
+// Seuls les Admin, les médecins et les réceptionnistes ont cette habilitation.
 async function updatePatientStatus(req, res) {
   if (!process.env.DATABASE_URL) {
     return res.status(500).json({ error: "Configuration serveur incomplète (DATABASE_URL)." });
   }
 
-  // Règle d'autorisation (RBAC) : Seuls DOCTOR ou RECEPTIONIST peuvent archiver/réactiver
-  if (req.user && req.user.role !== 'RECEPTIONIST' && req.user.role !== 'DOCTOR') {
-    return res.status(403).json({ error: "Seul le personnel de réception ou les médecins peuvent archiver/restaurer un dossier patient." });
+  // Règle d'autorisation (RBAC) : Seuls DOCTOR, RECEPTIONIST ou ADMIN peuvent archiver/réactiver
+  if (req.user && req.user.role !== 'RECEPTIONIST' && req.user.role !== 'DOCTOR' && req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: "Seul le personnel de réception, les médecins ou les administrateurs peuvent archiver/restaurer un dossier patient." });
   }
 
   const { id } = req.params;
@@ -229,9 +237,9 @@ async function updatePatient(req, res) {
     return res.status(500).json({ error: "Configuration serveur incomplète (DATABASE_URL)." });
   }
 
-  // Règle d'autorisation (RBAC) : Seuls RECEPTIONIST ou DOCTOR peuvent éditer un dossier patient
-  if (req.user && req.user.role !== 'RECEPTIONIST' && req.user.role !== 'DOCTOR') {
-    return res.status(403).json({ error: "Seul le personnel de réception ou les médecins peuvent modifier un dossier patient." });
+  // Règle d'autorisation (RBAC) : Seuls RECEPTIONIST, DOCTOR ou ADMIN peuvent éditer un dossier patient
+  if (req.user && req.user.role !== 'RECEPTIONIST' && req.user.role !== 'DOCTOR' && req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: "Seul le personnel de réception, les médecins ou les administrateurs peuvent modifier un dossier patient." });
   }
 
   const { id } = req.params;
@@ -290,7 +298,7 @@ app.put("/api/patients/:id", authenticateToken, updatePatient);
 
 app.use((req, res) => {
   res.status(404).json({
-    error: "Route inconnue sur l’API clinical-platform",
+    error: "Route inconnue sur l’API MedyIA",
     method: req.method,
     path: req.path,
     originalUrl: req.originalUrl,
@@ -302,7 +310,7 @@ app.use((req, res) => {
 const PORT = Number(process.env.PORT) || 5000;
 app.listen(PORT, "0.0.0.0", () => {
   console.log("");
-  console.log("======== clinical-platform API ========");
+  console.log("======== MedyIA API ========");
   console.log(`Fichier : ${SERVER_FILE}`);
   console.log(`Démarrage : ${BOOT}`);
   console.log(`Écoute  : http://127.0.0.1:${PORT}`);

@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS prescriptions (
 INSERT INTO clinical_notes (patient_id, author_id, note_text)
 VALUES (
   (SELECT id FROM patients WHERE last_name = 'Diallo' LIMIT 1),
-  (SELECT id FROM staff WHERE email = 'doctor@clinic.com' LIMIT 1),
+  (SELECT id FROM staff WHERE email = 'mourad@mediai.local' LIMIT 1),
   'Le patient se plaint de violents maux de tête récurrents. Pas de fièvre signalée. Suspicion de migraine ophtalmique. Repos recommandé.'
 );
 
@@ -70,7 +70,7 @@ VALUES (
 INSERT INTO prescriptions (patient_id, doctor_id, medication_name, dosage, instructions)
 VALUES (
   (SELECT id FROM patients WHERE last_name = 'Diallo' LIMIT 1),
-  (SELECT id FROM staff WHERE email = 'doctor@clinic.com' LIMIT 1),
+  (SELECT id FROM staff WHERE email = 'mourad@mediai.local' LIMIT 1),
   'Paracétamol 1000mg',
   '1 comprimé',
   'Toutes les 6 heures en cas de douleur (Maximum 3g par jour) pendant 3 jours.'

@@ -37,10 +37,10 @@ export default function Login() {
 
   // Les comptes de test (pour faciliter la démonstration)
   const setTestAccount = (role: 'doctor' | 'nurse' | 'receptionist') => {
-    if (role === 'doctor') setEmail('doctor@clinic.com');
-    else if (role === 'nurse') setEmail('nurse@clinic.com');
-    else setEmail('reception@clinic.com');
-    
+    if (role === 'doctor') setEmail('mourad@mediai.local');
+    else if (role === 'nurse') setEmail('elisa@mediai.local');
+    else setEmail('ines@mediai.local');
+
     setPassword('password123');
   }
 
@@ -48,8 +48,8 @@ export default function Login() {
     <div className="login-container">
       <div className="login-box">
         <div className="login-header">
-          <h2>EpicClinical</h2>
-          <p>Portail Personnel Médical</p>
+          <h2>MedyIA</h2>
+          <p>Plateforme de gestion clinique intelligente</p>
         </div>
 
         {error && <div className="login-error">{error}</div>}
@@ -61,7 +61,7 @@ export default function Login() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="ex: doctor@clinic.com"
+              placeholder="ex: mourad@mediai.local"
               required
             />
           </div>

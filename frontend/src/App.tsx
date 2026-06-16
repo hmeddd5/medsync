@@ -244,7 +244,7 @@ function PatientsView({ onOpenDetail }: { onOpenDetail: (patientId: number) => v
                 <tr key={patient.id} className={patient.status === 'ARCHIVED' ? 'row-archived' : ''}>
                   <td><code>#{patient.id}</code></td>
                   <td>
-                    <strong>{patient.lastName.toUpperCase()}</strong> {patient.firstName}
+                    {patient.lastName.toUpperCase()} {patient.firstName}
                   </td>
                   <td>{patient.phone || <span className="text-muted">-</span>}</td>
                   <td>{patient.email || <span className="text-muted">-</span>}</td>
@@ -357,15 +357,15 @@ function App() {
       {/* Sidebar Navigation */}
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <h2>EpicClinical</h2>
+          <h2>MedyIA</h2>
         </div>
         
-        <div className="sidebar-user">
-          <div className="user-avatar">{user?.firstName.charAt(0)}{user?.lastName.charAt(0)}</div>
-          <div className="user-info">
-            <span className="user-name">{user?.firstName} {user?.lastName}</span>
-            <span className="user-role">{user?.role}</span>
-          </div>
+        <div className="user-avatar">
+          {user?.fullName?.charAt(0) || "M"}
+        </div>
+        <div className="user-info">
+        <span className="user-name">{user?.fullName || user?.email}</span>
+        <span className="user-role">{user?.role}</span>
         </div>
 
         <nav className="sidebar-nav">

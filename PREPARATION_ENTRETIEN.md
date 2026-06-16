@@ -1,4 +1,4 @@
-# Préparation aux Entretiens - Plateforme Clinique (EpicClinical Web)
+# Préparation aux Entretiens - (MedyIA)
 
 Ce document regroupe les questions techniques et méthodologiques types que les recruteurs ou tech leads peuvent poser lors d'un entretien de recrutement au sujet de ce projet, ainsi que les réponses clés pour valoriser ton travail.
 
