@@ -586,3 +586,45 @@ body {
 .logout-btn:hover {
   background: rgba(239, 68, 68, 0.25);
 }
+.danger-btn {
+  border: none;
+  background: #fee2e2;
+  color: #b91c1c;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.danger-btn:hover {
+  background: #fecaca;
+}
+
+.badge.danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.small-btn {
+  border: none;
+  background: #e0f2fe;
+  color: #0369a1;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-weight: 800;
+  cursor: pointer;
+  margin-right: 8px;
+}
+
+.small-btn:hover {
+  background: #bae6fd;
+}
+
+.secondary-btn {
+  border: none;
+  background: #e2e8f0;
+  color: #334155;
+  padding: 12px;
+  border-radius: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
