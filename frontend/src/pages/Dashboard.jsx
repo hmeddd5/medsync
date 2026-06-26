@@ -18,8 +18,7 @@ function Dashboard() {
   });
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/dashboard/stats")
-      .then((res) => res.json())
+fetch(`${import.meta.env.VITE_API_URL || "http://localhost:5000/api"}/dashboard/stats`)      .then((res) => res.json())
       .then((data) => setStats(data))
       .catch((err) => console.error("Erreur dashboard :", err));
   }, []);
